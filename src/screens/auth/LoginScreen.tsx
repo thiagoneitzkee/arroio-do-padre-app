@@ -5,12 +5,15 @@ import {
   StyleSheet,
   TextInput,
   TouchableOpacity,
+  ScrollView,
   ActivityIndicator,
   Alert,
-  ScrollView,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { useAuthStore } from '../../store/authStore';
 import { useForm, Controller } from 'react-hook-form';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 
 interface LoginFormData {
   email: string;
@@ -20,6 +23,7 @@ interface LoginFormData {
 export default function LoginScreen({ navigation }: any) {
   const { login } = useAuthStore();
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const { control, handleSubmit, formState: { errors } } = useForm<LoginFormData>({
     defaultValues: {
       email: '',
@@ -31,102 +35,144 @@ export default function LoginScreen({ navigation }: any) {
     setLoading(true);
     try {
       await login(data.email, data.password);
-    } catch (error) {
-      Alert.alert('Erro', 'Falha ao fazer login. Verifique seus dados.');
+    } catch (error: any) {
+      Alert.alert('Erro', error.message || 'Falha ao fazer login');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.content}>
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      style={styles.container}
+    >
+      <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>
+          <View style={styles.logoContainer}>
+            <MaterialCommunityIcons name="file-document-multiple" size={64} color="#2E7D32" />
+          </View>
           <Text style={styles.title}>Arroio do Padre</Text>
-          <Text style={styles.subtitle}>Serviços Públicos</Text>
+          <Text style={styles.subtitle}>Solicitações de Serviços Públicos</Text>
         </View>
 
-        <View style={styles.formContainer}>
-          <Text style={styles.formTitle}>Entrar</Text>
+        <View style={styles.form}>
+          <View style={styles.formGroup}>
+            <Text style={styles.label}>Email</Text>
+            <Controller
+              control={control}
+              name="email"
+              rules={{
+                required: 'Email é obrigatório',
+                pattern: {
+                  value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+                  message: 'Email inválido',
+                },
+              }}
+              render={({ field: { onChange, value } }) => (
+                <View>
+                  <View style={[styles.inputContainer, errors.email && styles.inputContainerError]}>
+                    <MaterialCommunityIcons name="email" size={20} color="#999" />
+                    <TextInput
+                      style={styles.input}
+                      placeholder="seu@email.com"
+                      placeholderTextColor="#CCC"
+                      value={value}
+                      onChangeText={onChange}
+                      keyboardType="email-address"
+                      autoCapitalize="none"
+                      editable={!loading}
+                    />
+                  </View>
+                  {errors.email && (
+                    <Text style={styles.errorText}>{errors.email.message}</Text>
+                  )}
+                </View>
+              )}
+            />
+          </View>
 
-          <Controller
-            control={control}
-            name="email"
-            rules={{
-              required: 'Email é obrigatório',
-              pattern: {
-                value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
-                message: 'Email inválido',
-              },
-            }}
-            render={({ field: { onChange, value } }) => (
-              <View>
-                <TextInput
-                  style={[styles.input, errors.email && styles.inputError]}
-                  placeholder="Email"
-                  placeholderTextColor="#999"
-                  value={value}
-                  onChangeText={onChange}
-                  keyboardType="email-address"
-                  editable={!loading}
-                />
-                {errors.email && (
-                  <Text style={styles.errorText}>{errors.email.message}</Text>
-                )}
-              </View>
-            )}
-          />
-
-          <Controller
-            control={control}
-            name="password"
-            rules={{
-              required: 'Senha é obrigatória',
-              minLength: {
-                value: 6,
-                message: 'Senha deve ter no mínimo 6 caracteres',
-              },
-            }}
-            render={({ field: { onChange, value } }) => (
-              <View>
-                <TextInput
-                  style={[styles.input, errors.password && styles.inputError]}
-                  placeholder="Senha"
-                  placeholderTextColor="#999"
-                  value={value}
-                  onChangeText={onChange}
-                  secureTextEntry
-                  editable={!loading}
-                />
-                {errors.password && (
-                  <Text style={styles.errorText}>{errors.password.message}</Text>
-                )}
-              </View>
-            )}
-          />
+          <View style={styles.formGroup}>
+            <Text style={styles.label}>Senha</Text>
+            <Controller
+              control={control}
+              name="password"
+              rules={{ required: 'Senha é obrigatória' }}
+              render={({ field: { onChange, value } }) => (
+                <View>
+                  <View style={[styles.inputContainer, errors.password && styles.inputContainerError]}>
+                    <MaterialCommunityIcons name="lock" size={20} color="#999" />
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Sua senha"
+                      placeholderTextColor="#CCC"
+                      value={value}
+                      onChangeText={onChange}
+                      secureTextEntry={!showPassword}
+                      editable={!loading}
+                    />
+                    <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+                      <MaterialCommunityIcons
+                        name={showPassword ? 'eye-off' : 'eye'}
+                        size={20}
+                        color="#999"
+                      />
+                    </TouchableOpacity>
+                  </View>
+                  {errors.password && (
+                    <Text style={styles.errorText}>{errors.password.message}</Text>
+                  )}
+                </View>
+              )}
+            />
+          </View>
 
           <TouchableOpacity
-            style={[styles.button, loading && styles.buttonDisabled]}
+            style={[styles.loginButton, loading && styles.buttonDisabled]}
             onPress={handleSubmit(onSubmit)}
             disabled={loading}
           >
             {loading ? (
               <ActivityIndicator color="#FFF" />
             ) : (
-              <Text style={styles.buttonText}>Entrar</Text>
+              <>
+                <MaterialCommunityIcons name="login" size={20} color="#FFF" />
+                <Text style={styles.loginButtonText}>Entrar</Text>
+              </>
             )}
           </TouchableOpacity>
 
+          <View style={styles.divider}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>ou</Text>
+            <View style={styles.dividerLine} />
+          </View>
+
           <TouchableOpacity
-            style={styles.linkButton}
+            style={styles.registerButton}
             onPress={() => navigation.navigate('Register')}
             disabled={loading}
           >
-            <Text style={styles.linkText}>Não tem conta? <Text style={styles.linkTextBold}>Cadastre-se</Text></Text>
+            <MaterialCommunityIcons name="account-plus" size={20} color="#2E7D32" />
+            <Text style={styles.registerButtonText}>Criar uma Conta</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.forgotButton}
+            onPress={() => Alert.alert('Info', 'Função de recuperação de senha em desenvolvimento')}
+            disabled={loading}
+          >
+            <Text style={styles.forgotButtonText}>Esqueceu a senha?</Text>
           </TouchableOpacity>
         </View>
-      </View>
-    </ScrollView>
+
+        <View style={styles.footer}>
+          <Text style={styles.footerText}>
+            Desenvolvido pela Prefeitura de Arroio do Padre
+          </Text>
+        </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -135,86 +181,131 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F5F5F5',
   },
-  content: {
-    flex: 1,
-    justifyContent: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 40,
+  scrollContent: {
+    flexGrow: 1,
+    justifyContent: 'space-between',
   },
   header: {
+    backgroundColor: '#2E7D32',
+    paddingHorizontal: 20,
+    paddingTop: 40,
+    paddingBottom: 30,
     alignItems: 'center',
-    marginBottom: 40,
+  },
+  logoContainer: {
+    marginBottom: 15,
   },
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#2E7D32',
+    color: '#FFFFFF',
     marginBottom: 5,
   },
   subtitle: {
     fontSize: 14,
-    color: '#666',
+    color: '#E8F5E9',
   },
-  formContainer: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+  form: {
+    paddingHorizontal: 20,
+    paddingVertical: 30,
   },
-  formTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#333',
+  formGroup: {
     marginBottom: 20,
   },
-  input: {
+  label: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 8,
+  },
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
     borderColor: '#DDD',
     borderRadius: 8,
     paddingHorizontal: 12,
+    gap: 10,
+  },
+  inputContainerError: {
+    borderColor: '#E53935',
+  },
+  input: {
+    flex: 1,
     paddingVertical: 12,
-    marginBottom: 15,
     fontSize: 14,
     color: '#333',
-  },
-  inputError: {
-    borderColor: '#E53935',
   },
   errorText: {
     color: '#E53935',
     fontSize: 12,
-    marginTop: -12,
-    marginBottom: 12,
+    marginTop: 5,
   },
-  button: {
+  loginButton: {
     backgroundColor: '#2E7D32',
     borderRadius: 8,
-    paddingVertical: 14,
+    paddingVertical: 12,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
     marginTop: 10,
   },
   buttonDisabled: {
     opacity: 0.6,
   },
-  buttonText: {
+  loginButtonText: {
     color: '#FFFFFF',
     fontWeight: 'bold',
     fontSize: 16,
   },
-  linkButton: {
-    marginTop: 20,
+  divider: {
+    flexDirection: 'row',
     alignItems: 'center',
+    marginVertical: 20,
   },
-  linkText: {
-    color: '#666',
-    fontSize: 14,
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#DDD',
   },
-  linkTextBold: {
+  dividerText: {
+    color: '#999',
+    paddingHorizontal: 10,
+    fontSize: 12,
+  },
+  registerButton: {
+    backgroundColor: '#E8F5E9',
+    borderWidth: 1,
+    borderColor: '#2E7D32',
+    borderRadius: 8,
+    paddingVertical: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  registerButtonText: {
     color: '#2E7D32',
     fontWeight: 'bold',
+    fontSize: 16,
+  },
+  forgotButton: {
+    marginTop: 15,
+    alignItems: 'center',
+  },
+  forgotButtonText: {
+    color: '#2E7D32',
+    fontSize: 12,
+    textDecorationLine: 'underline',
+  },
+  footer: {
+    alignItems: 'center',
+    paddingBottom: 20,
+  },
+  footerText: {
+    fontSize: 12,
+    color: '#999',
   },
 });

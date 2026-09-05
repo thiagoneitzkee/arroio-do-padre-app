@@ -5,12 +5,15 @@ import {
   StyleSheet,
   TextInput,
   TouchableOpacity,
+  ScrollView,
   ActivityIndicator,
   Alert,
-  ScrollView,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { useAuthStore } from '../../store/authStore';
 import { useForm, Controller } from 'react-hook-form';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 
 interface RegisterFormData {
   name: string;
@@ -18,12 +21,14 @@ interface RegisterFormData {
   phone: string;
   cpf: string;
   password: string;
-  passwordConfirm: string;
+  confirmPassword: string;
 }
 
 export default function RegisterScreen({ navigation }: any) {
   const { register } = useAuthStore();
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const { control, handleSubmit, watch, formState: { errors } } = useForm<RegisterFormData>({
     defaultValues: {
       name: '',
@@ -31,14 +36,14 @@ export default function RegisterScreen({ navigation }: any) {
       phone: '',
       cpf: '',
       password: '',
-      passwordConfirm: '',
+      confirmPassword: '',
     },
   });
 
   const password = watch('password');
 
   const onSubmit = async (data: RegisterFormData) => {
-    if (data.password !== data.passwordConfirm) {
+    if (data.password !== data.confirmPassword) {
       Alert.alert('Erro', 'As senhas não coincidem');
       return;
     }
@@ -52,125 +57,108 @@ export default function RegisterScreen({ navigation }: any) {
         cpf: data.cpf,
         password: data.password,
       });
-    } catch (error) {
-      Alert.alert('Erro', 'Falha ao criar conta. Tente novamente.');
+    } catch (error: any) {
+      Alert.alert('Erro', error.message || 'Falha ao criar conta');
     } finally {
       setLoading(false);
     }
   };
 
+  const FormField = ({
+    label,
+    name,
+    icon,
+    placeholder,
+    keyboardType = 'default',
+  }: any) => (
+    <Controller
+      control={control}
+      name={name}
+      rules={{
+        required: `${label} é obrigatório`,
+        ...(name === 'email' && {
+          pattern: {
+            value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+            message: 'Email inválido',
+          },
+        }),
+        ...(name === 'cpf' && {
+          minLength: { value: 11, message: 'CPF deve ter 11 dígitos' },
+        }),
+        ...(name === 'phone' && {
+          minLength: { value: 10, message: 'Telefone inválido' },
+        }),
+      }}
+      render={({ field: { onChange, value } }) => (
+        <View style={styles.formGroup}>
+          <Text style={styles.label}>{label}</Text>
+          <View style={[styles.inputContainer, errors[name] && styles.inputContainerError]}>
+            <MaterialCommunityIcons name={icon} size={20} color="#999" />
+            <TextInput
+              style={styles.input}
+              placeholder={placeholder}
+              placeholderTextColor="#CCC"
+              value={value}
+              onChangeText={onChange}
+              keyboardType={keyboardType}
+              autoCapitalize={name === 'email' ? 'none' : 'sentences'}
+              editable={!loading}
+            />
+          </View>
+          {errors[name] && <Text style={styles.errorText}>{(errors[name] as any).message}</Text>}
+        </View>
+      )}
+    />
+  );
+
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.content}>
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      style={styles.container}
+    >
+      <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>
-          <Text style={styles.title}>Cadastro</Text>
-          <Text style={styles.subtitle}>Crie sua conta</Text>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+            disabled={loading}
+          >
+            <MaterialCommunityIcons name="arrow-left" size={24} color="#FFF" />
+          </TouchableOpacity>
+          <Text style={styles.title}>Criar Conta</Text>
+          <Text style={styles.subtitle}>Preencha os dados para se registrar</Text>
         </View>
 
-        <View style={styles.formContainer}>
-          <Controller
-            control={control}
+        <View style={styles.form}>
+          <FormField
+            label="Nome Completo"
             name="name"
-            rules={{ required: 'Nome é obrigatório' }}
-            render={({ field: { onChange, value } }) => (
-              <View>
-                <TextInput
-                  style={[styles.input, errors.name && styles.inputError]}
-                  placeholder="Nome completo"
-                  placeholderTextColor="#999"
-                  value={value}
-                  onChangeText={onChange}
-                  editable={!loading}
-                />
-                {errors.name && (
-                  <Text style={styles.errorText}>{errors.name.message}</Text>
-                )}
-              </View>
-            )}
+            icon="account"
+            placeholder="Seu nome"
           />
 
-          <Controller
-            control={control}
+          <FormField
+            label="Email"
             name="email"
-            rules={{
-              required: 'Email é obrigatório',
-              pattern: {
-                value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
-                message: 'Email inválido',
-              },
-            }}
-            render={({ field: { onChange, value } }) => (
-              <View>
-                <TextInput
-                  style={[styles.input, errors.email && styles.inputError]}
-                  placeholder="Email"
-                  placeholderTextColor="#999"
-                  value={value}
-                  onChangeText={onChange}
-                  keyboardType="email-address"
-                  editable={!loading}
-                />
-                {errors.email && (
-                  <Text style={styles.errorText}>{errors.email.message}</Text>
-                )}
-              </View>
-            )}
+            icon="email"
+            placeholder="seu@email.com"
+            keyboardType="email-address"
           />
 
-          <Controller
-            control={control}
-            name="cpf"
-            rules={{
-              required: 'CPF é obrigatório',
-              pattern: {
-                value: /^\d{3}\.\d{3}\.\d{3}-\d{2}$/,
-                message: 'CPF deve estar no formato XXX.XXX.XXX-XX',
-              },
-            }}
-            render={({ field: { onChange, value } }) => (
-              <View>
-                <TextInput
-                  style={[styles.input, errors.cpf && styles.inputError]}
-                  placeholder="CPF (xxx.xxx.xxx-xx)"
-                  placeholderTextColor="#999"
-                  value={value}
-                  onChangeText={onChange}
-                  keyboardType="numeric"
-                  editable={!loading}
-                />
-                {errors.cpf && (
-                  <Text style={styles.errorText}>{errors.cpf.message}</Text>
-                )}
-              </View>
-            )}
-          />
-
-          <Controller
-            control={control}
+          <FormField
+            label="Telefone"
             name="phone"
-            rules={{
-              required: 'Telefone é obrigatório',
-              pattern: {
-                value: /^\(\d{2}\)\s\d{4,5}-\d{4}$/,
-                message: 'Telefone deve estar no formato (XX) XXXXX-XXXX',
-              },
-            }}
-            render={({ field: { onChange, value } }) => (
-              <View>
-                <TextInput
-                  style={[styles.input, errors.phone && styles.inputError]}
-                  placeholder="Telefone ((xx) xxxxx-xxxx)"
-                  placeholderTextColor="#999"
-                  value={value}
-                  onChangeText={onChange}
-                  keyboardType="phone-pad"
-                  editable={!loading}
-                />
-                {errors.phone && (
-                  <Text style={styles.errorText}>{errors.phone.message}</Text>
-                )}
-              </View>
-            )}
+            icon="phone"
+            placeholder="(XX) XXXXX-XXXX"
+            keyboardType="phone-pad"
+          />
+
+          <FormField
+            label="CPF"
+            name="cpf"
+            icon="card-account-details"
+            placeholder="XXX.XXX.XXX-XX"
+            keyboardType="numeric"
           />
 
           <Controller
@@ -178,77 +166,94 @@ export default function RegisterScreen({ navigation }: any) {
             name="password"
             rules={{
               required: 'Senha é obrigatória',
-              minLength: {
-                value: 6,
-                message: 'Senha deve ter no mínimo 6 caracteres',
-              },
+              minLength: { value: 6, message: 'Senha deve ter pelo menos 6 caracteres' },
             }}
             render={({ field: { onChange, value } }) => (
-              <View>
-                <TextInput
-                  style={[styles.input, errors.password && styles.inputError]}
-                  placeholder="Senha"
-                  placeholderTextColor="#999"
-                  value={value}
-                  onChangeText={onChange}
-                  secureTextEntry
-                  editable={!loading}
-                />
-                {errors.password && (
-                  <Text style={styles.errorText}>{errors.password.message}</Text>
-                )}
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>Senha</Text>
+                <View style={[styles.inputContainer, errors.password && styles.inputContainerError]}>
+                  <MaterialCommunityIcons name="lock" size={20} color="#999" />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Crie uma senha"
+                    placeholderTextColor="#CCC"
+                    value={value}
+                    onChangeText={onChange}
+                    secureTextEntry={!showPassword}
+                    editable={!loading}
+                  />
+                  <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+                    <MaterialCommunityIcons
+                      name={showPassword ? 'eye-off' : 'eye'}
+                      size={20}
+                      color="#999"
+                    />
+                  </TouchableOpacity>
+                </View>
+                {errors.password && <Text style={styles.errorText}>{(errors.password as any).message}</Text>}
               </View>
             )}
           />
 
           <Controller
             control={control}
-            name="passwordConfirm"
+            name="confirmPassword"
             rules={{
               required: 'Confirmação de senha é obrigatória',
-              validate: (value) =>
-                value === password || 'As senhas não coincidem',
+              validate: (value) => value === password || 'As senhas não coincidem',
             }}
             render={({ field: { onChange, value } }) => (
-              <View>
-                <TextInput
-                  style={[styles.input, errors.passwordConfirm && styles.inputError]}
-                  placeholder="Confirmar senha"
-                  placeholderTextColor="#999"
-                  value={value}
-                  onChangeText={onChange}
-                  secureTextEntry
-                  editable={!loading}
-                />
-                {errors.passwordConfirm && (
-                  <Text style={styles.errorText}>{errors.passwordConfirm.message}</Text>
-                )}
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>Confirmar Senha</Text>
+                <View style={[styles.inputContainer, errors.confirmPassword && styles.inputContainerError]}>
+                  <MaterialCommunityIcons name="lock-check" size={20} color="#999" />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Confirme a senha"
+                    placeholderTextColor="#CCC"
+                    value={value}
+                    onChangeText={onChange}
+                    secureTextEntry={!showConfirmPassword}
+                    editable={!loading}
+                  />
+                  <TouchableOpacity onPress={() => setShowConfirmPassword(!showConfirmPassword)}>
+                    <MaterialCommunityIcons
+                      name={showConfirmPassword ? 'eye-off' : 'eye'}
+                      size={20}
+                      color="#999"
+                    />
+                  </TouchableOpacity>
+                </View>
+                {errors.confirmPassword && <Text style={styles.errorText}>{(errors.confirmPassword as any).message}</Text>}
               </View>
             )}
           />
 
           <TouchableOpacity
-            style={[styles.button, loading && styles.buttonDisabled]}
+            style={[styles.registerButton, loading && styles.buttonDisabled]}
             onPress={handleSubmit(onSubmit)}
             disabled={loading}
           >
             {loading ? (
               <ActivityIndicator color="#FFF" />
             ) : (
-              <Text style={styles.buttonText}>Cadastrar</Text>
+              <>
+                <MaterialCommunityIcons name="account-plus" size={20} color="#FFF" />
+                <Text style={styles.registerButtonText}>Criar Conta</Text>
+              </>
             )}
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={styles.linkButton}
-            onPress={() => navigation.navigate('Login')}
+            style={styles.loginLink}
+            onPress={() => navigation.goBack()}
             disabled={loading}
           >
-            <Text style={styles.linkText}>Já tem conta? <Text style={styles.linkTextBold}>Faça login</Text></Text>
+            <Text style={styles.loginLinkText}>Já tem uma conta? Faça login</Text>
           </TouchableOpacity>
         </View>
-      </View>
-    </ScrollView>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -257,78 +262,90 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F5F5F5',
   },
-  content: {
-    paddingHorizontal: 20,
-    paddingVertical: 20,
+  scrollContent: {
+    flexGrow: 1,
   },
   header: {
-    alignItems: 'center',
-    marginBottom: 30,
+    backgroundColor: '#2E7D32',
+    paddingHorizontal: 20,
+    paddingTop: 40,
+    paddingBottom: 30,
+  },
+  backButton: {
+    marginBottom: 15,
   },
   title: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: 'bold',
-    color: '#2E7D32',
+    color: '#FFFFFF',
     marginBottom: 5,
   },
   subtitle: {
     fontSize: 14,
-    color: '#666',
+    color: '#E8F5E9',
   },
-  formContainer: {
+  form: {
+    paddingHorizontal: 20,
+    paddingVertical: 20,
+  },
+  formGroup: {
+    marginBottom: 15,
+  },
+  label: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 8,
+  },
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  input: {
     borderWidth: 1,
     borderColor: '#DDD',
     borderRadius: 8,
     paddingHorizontal: 12,
+    gap: 10,
+  },
+  inputContainerError: {
+    borderColor: '#E53935',
+  },
+  input: {
+    flex: 1,
     paddingVertical: 12,
-    marginBottom: 15,
     fontSize: 14,
     color: '#333',
-  },
-  inputError: {
-    borderColor: '#E53935',
   },
   errorText: {
     color: '#E53935',
     fontSize: 12,
-    marginTop: -12,
-    marginBottom: 12,
+    marginTop: 5,
   },
-  button: {
+  registerButton: {
     backgroundColor: '#2E7D32',
     borderRadius: 8,
-    paddingVertical: 14,
+    paddingVertical: 12,
+    flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 10,
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 20,
   },
   buttonDisabled: {
     opacity: 0.6,
   },
-  buttonText: {
+  registerButtonText: {
     color: '#FFFFFF',
     fontWeight: 'bold',
     fontSize: 16,
   },
-  linkButton: {
-    marginTop: 20,
+  loginLink: {
+    marginTop: 15,
     alignItems: 'center',
   },
-  linkText: {
-    color: '#666',
-    fontSize: 14,
-  },
-  linkTextBold: {
+  loginLinkText: {
     color: '#2E7D32',
-    fontWeight: 'bold',
+    fontSize: 14,
+    textDecorationLine: 'underline',
   },
 });
